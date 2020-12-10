@@ -2,6 +2,17 @@
 
 import sys
 
+LDI = 0b10000010
+HLT = 0b00000001
+PRN = 0b01000111
+MUL = 0b10100010
+ADD = 0b10100000
+SUB = 0b10100001
+PUSH = 0b01000101
+POP = 0b01000110
+SP = 7
+
+
 class CPU:
     """Main CPU class."""
 
@@ -81,6 +92,10 @@ class CPU:
             
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        # elif op == "POP":
+            
+        # elif op == "PUSH":
+        #     pass
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -106,12 +121,6 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        LDI = 0b10000010
-        HLT = 0b00000001
-        PRN = 0b01000111
-        MUL = 0b10100010
-        ADD = 0b10100000
-        SUB = 0b10100001
 
         # op === operation
 
@@ -142,4 +151,19 @@ class CPU:
             elif instruction == MUL:
                 self.reg[op_1] *= self.reg[op_2]
                 self.pc += 3
+            
+            elif instruction == PUSH:
+                self.reg[SP] -= 1
+                reg_val = self.reg[op_1]
+                top_val = self.reg[SP]
+                self.ram[top_val] = reg_val;
+                self.pc += 2
+
+            elif instruction == POP:
+                top_val = self.ram_read(self.reg[SP])
+                self.reg[op_1] = top_val
+                self.reg[SP] += 1
+                self.pc += 2
+                
+                
             
