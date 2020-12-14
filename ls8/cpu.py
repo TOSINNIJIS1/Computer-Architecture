@@ -2,41 +2,112 @@
 
 import sys
 
+LDI = 0b10000010
+HLT = 0b00000001
+PRN = 0b01000111
+MUL = 0b10100010
+ADD = 0b10100000
+SUB = 0b10100001
+PUSH = 0b01000101
+POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
+CMP = 0b10100111
+JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
+SP = 7
+
+
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.ram = [0] * 256;        
+        self.reg = [0] * 8;
+        self.reg[7] = 0xF4                   #Random Access Memory
+        self.pc = 0;                                    #Progress Counter
+        self.ir = 0;                                    #Instruction Register
+        self.mar = 0;                                   #Memory Address Register
+        self.mdr = 0;                                   #Memory Data Register
+        self.fr = 0;                                    #Flag Register
+        self.isRunning = True;
+
+    def ram_read(self, mar):
+        return self.ram[mar]
+
+    def ram_write(self, mar, mdr):
+        self.ram[mar] = mdr
+
+
 
     def load(self):
         """Load a program into memory."""
+        # print(sys.argv)
+        # sys.exit(0)
 
-        address = 0
+        # # get file name from command line argument
+
+        address = 0;
+        
+        if len(sys.argv) != 2:
+            print("Usage: example_cpu.py filename")
+            sys.exit(1)
+
+        try:
+            with open(sys.argv[1]) as f:
+                for line in f:
+                    split = line.split('#')
+                    value = split[0].strip()
+                    print(value)
+
+                    if value == '':
+                        continue
+
+                    val = int(value, 2)
+                    self.ram_write(address, val)
+                    address += 1
+
+        except FileNotFoundError:
+            print(f"{sys.argv[1]} file not found")
+            sys.exit(2)
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        # program = [
+        #     # From print8.ls8
+        #     0b10000010, # LDI R0,8
+        #     0b00000000,
+        #     0b00001000,
+        #     0b01000111, # PRN R0
+        #     0b00000000,
+        #     0b00000001, # HLT
+        # ]
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
-
-
+        # for instruction in program:
+        #     self.ram[address] = instruction
+        #     address += 1
+    
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
-
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        # elif op == "SUB":
+        #     self.reg[reg_a] -= self.reg[reg_b]
+            
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
+
+        elif op == "CMP":
+                self.fr = 0b00000000
+                if self.reg[reg_a] == self.reg[reg_b]:
+                    self.fr = 0b00000001
+                elif self.reg[reg_a] > self.reg[reg_b]:
+                    self.fr = 0b00000010
+                elif self.reg[reg_a] < self.reg[reg_b]:
+                    self.fr = 0b00000100    
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -62,4 +133,85 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+
+        # op === operation
+
+        while self.isRunning:
+            instruction = self.ram_read(self.pc)
+            op_1 = self.ram_read(self.pc + 1)
+            op_2 = self.ram_read(self.pc + 2)
+
+            if instruction == HLT:
+                self.isRunning = False;
+                self.pc += 1
+
+            elif instruction == LDI:
+                self.reg[op_1] = op_2
+                self.pc += 3
+
+            elif instruction == PRN:
+                op_1 = self.ram_read(self.pc + 1)
+                print(self.reg[op_1])
+                self.pc += 2
+
+            elif instruction == ADD:
+                self.reg[op_1] += self.reg[op_2]
+
+            elif instruction == SUB:
+                self.reg[op_1] -= self.reg[op_2]
+                
+            elif instruction == MUL:
+                self.reg[op_1] *= self.reg[op_2]
+                self.pc += 3
+            
+            elif instruction == PUSH:
+                self.reg[SP] -= 1
+                reg_val = self.reg[op_1]
+                top_val = self.reg[SP]
+                self.ram[top_val] = reg_val;
+                self.pc += 2
+
+            elif instruction == POP:
+                top_val = self.ram_read(self.reg[SP])
+                self.reg[op_1] = top_val
+                self.reg[SP] += 1
+                self.pc += 2
+
+            elif instruction == CALL:
+                self.reg[SP] -= 1
+                self.ram[self.reg[SP]] = self.pc + 2                
+                self.pc = self.reg[op_1]
+                return
+
+            elif instruction == RET:
+                self.reg[SP] += 1
+                self.pc = self.ram[self.reg[SP]]
+
+                return
+                
+            elif instruction == CMP:
+                self.alu('CMP', op_1, op_2)
+                self.pc += 3                
+            
+            
+            elif instruction == JMP:
+                self.pc = self.reg[op_1]
+                
+
+            elif instruction == JEQ:
+                if self.fr & 0b00000001 == 1:
+                    self.pc = self.reg[op_1]
+                else:
+                    self.pc += 2
+            
+            elif instruction == JNE:
+                if self.fr & 0b00000001 == 0:
+                    self.pc = self.reg[op_1]
+                else:
+                    self.pc += 2
+                
+                
+                
+                
+                
+            
