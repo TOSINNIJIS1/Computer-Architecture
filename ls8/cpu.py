@@ -10,7 +10,14 @@ ADD = 0b10100000
 SUB = 0b10100001
 PUSH = 0b01000101
 POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
+CMP = 0b10100111
+JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
 SP = 7
+
 
 
 class CPU:
@@ -92,10 +99,15 @@ class CPU:
             
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
-        # elif op == "POP":
-            
-        # elif op == "PUSH":
-        #     pass
+
+        elif op == "CMP":
+                self.fr = 0b00000000
+                if self.reg[reg_a] == self.reg[reg_b]:
+                    self.fr = 0b00000001
+                elif self.reg[reg_a] > self.reg[reg_b]:
+                    self.fr = 0b00000010
+                elif self.reg[reg_a] < self.reg[reg_b]:
+                    self.fr = 0b00000100    
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -164,6 +176,42 @@ class CPU:
                 self.reg[op_1] = top_val
                 self.reg[SP] += 1
                 self.pc += 2
+
+            elif instruction == CALL:
+                self.reg[SP] -= 1
+                self.ram[self.reg[SP]] = self.pc + 2                
+                self.pc = self.reg[op_1]
+                return
+
+            elif instruction == RET:
+                self.reg[SP] += 1
+                self.pc = self.ram[self.reg[SP]]
+
+                return
+                
+            elif instruction == CMP:
+                self.alu('CMP', op_1, op_2)
+                self.pc += 3                
+            
+            
+            elif instruction == JMP:
+                self.pc = self.reg[op_1]
+                
+
+            elif instruction == JEQ:
+                if self.fr & 0b00000001 == 1:
+                    self.pc = self.reg[op_1]
+                else:
+                    self.pc += 2
+            
+            elif instruction == JNE:
+                if self.fr & 0b00000001 == 0:
+                    self.pc = self.reg[op_1]
+                else:
+                    self.pc += 2
+                
+                
+                
                 
                 
             
